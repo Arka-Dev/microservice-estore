@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model cog_cities {
+  id               Int                  @id @default(autoincrement())
+  name             String               @db.VarChar(128)
+  cog_countries_id Int
+  cog_states_id    Int
+  latitude         Decimal?             @db.Decimal(8, 4)
+  longitude        Decimal?             @db.Decimal(8, 4)
+  created_at       DateTime             @default(now()) @db.Timestamp(0)
+  updated_at       DateTime             @default(dbgenerated("'0000-00-00 00:00:00'")) @db.Timestamp(0)
+  is_active        cog_cities_is_active
+
+  @@index([cog_countries_id], map: "cog_cities_FI_1")
+  @@index([cog_states_id], map: "cog_cities_FI_2")
+}
+
+model cog_countries {
+  id            Int       @id @default(autoincrement())
+  name          String    @db.VarChar(128)
+  has_states    Boolean
+  has_cities    Boolean
+  currency_name String?   @db.VarChar(64)
+  currency_code String?   @db.VarChar(3)
+  dialing_code  Int
+  iso2_code     String    @db.VarChar(2)
+  created_at    DateTime? @db.DateTime(0)
+  updated_at    DateTime? @db.DateTime(0)
+}
+
+model cog_states {
+  id               Int                  @id @default(autoincrement())
+  name             String               @db.VarChar(128)
+  has_cities       Boolean
+  cog_countries_id Int
+  iso_code         String?              @db.VarChar(20)
+  is_active        cog_states_is_active
+  created_at       DateTime?            @db.DateTime(0)
+  updated_at       DateTime?            @db.DateTime(0)
+
+  @@index([cog_countries_id], map: "fk_cog_countries_id")
+}
+
+enum cog_states_is_active {
+   N @map("0")
+   Y @map("1")
+}
+
+enum cog_cities_is_active {
+   N @map("0")
+   Y @map("1")
+}
