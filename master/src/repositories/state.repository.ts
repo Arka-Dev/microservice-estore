@@ -8,9 +8,33 @@ export class StateRepository {
     ){}
 
     async activeStatesByCountryId({country_id} : any){
-        const where = { cog_countries_id: country_id, has_cities: true};
-        return await this.prismaService.cog_states.findMany({
-            where
-        });
+        try{
+            const where = { cog_countries_id: country_id, has_cities: true};
+            let states = await this.prismaService.cog_states.findMany({
+                where,
+                select: {
+                    name: true,
+                    cities: {
+                        where: {
+                            is_active: "Y"
+                        }
+                    }
+                }
+            });
+            /*for(let i = 0; i < states.length; i++){
+                let cities = await this.prismaService.cog_cities.findMany({
+                    where: {
+                        is_active: "Y",
+                        cog_states_id: states[i].id
+                    }
+                });
+                states[i]["cities"] = cities;
+            };*/
+            return states;
+        }
+        catch(err){
+            console.log(err)
+            return [];
+        }
     }
 }

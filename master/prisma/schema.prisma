@@ -15,24 +15,28 @@ model cog_cities {
   latitude         Decimal?             @db.Decimal(8, 4)
   longitude        Decimal?             @db.Decimal(8, 4)
   created_at       DateTime             @default(now()) @db.Timestamp(0)
-  updated_at       DateTime             @default(dbgenerated("'0000-00-00 00:00:00'")) @db.Timestamp(0)
+  updated_at       DateTime?            @db.Timestamp(0)
   is_active        cog_cities_is_active
+  cog_states       cog_states           @relation(fields: [cog_states_id], references: [id], onUpdate: Restrict, map: "cog_cities_ibfk_1")
+  cog_countries    cog_countries        @relation(fields: [cog_countries_id], references: [id], onUpdate: Restrict, map: "cog_cities_ibfk_2")
 
   @@index([cog_countries_id], map: "cog_cities_FI_1")
   @@index([cog_states_id], map: "cog_cities_FI_2")
 }
 
 model cog_countries {
-  id            Int       @id @default(autoincrement())
-  name          String    @db.VarChar(128)
+  id            Int          @id @default(autoincrement())
+  name          String       @db.VarChar(128)
   has_states    Boolean
   has_cities    Boolean
-  currency_name String?   @db.VarChar(64)
-  currency_code String?   @db.VarChar(3)
+  currency_name String?      @db.VarChar(64)
+  currency_code String?      @db.VarChar(3)
   dialing_code  Int
-  iso2_code     String    @db.VarChar(2)
-  created_at    DateTime? @db.DateTime(0)
-  updated_at    DateTime? @db.DateTime(0)
+  iso2_code     String       @db.VarChar(2)
+  created_at    DateTime?    @db.DateTime(0)
+  updated_at    DateTime?    @db.DateTime(0)
+  cog_cities    cog_cities[]
+  cog_states    cog_states[]
 }
 
 model cog_states {
@@ -44,16 +48,146 @@ model cog_states {
   is_active        cog_states_is_active
   created_at       DateTime?            @db.DateTime(0)
   updated_at       DateTime?            @db.DateTime(0)
+  cog_countries    cog_countries        @relation(fields: [cog_countries_id], references: [id], onUpdate: Restrict, map: "cog_states_ibfk_1")
+  cog_cities       cog_cities[]
 
   @@index([cog_countries_id], map: "fk_cog_countries_id")
 }
 
+model dcm_companies {
+  id                    Int                                @id @default(autoincrement())
+  name                  String                             @db.VarChar(128)
+  parent_id             Int?                               @default(0)
+  website               String?                            @db.VarChar(255)
+  location              String                             @db.VarChar(64)
+  abbreviation          String                             @db.VarChar(16)
+  company_type          Int
+  dcm_company_groups_id Int
+  dcm_organization_id   Int
+  source                dcm_companies_source               @default(client)
+  sap_vendor_code       String?                            @db.VarChar(32)
+  is_active             dcm_companies_is_active            @default(Y)
+  unique_tax_code       String                             @db.VarChar(16)
+  stop_supply           dcm_companies_stop_supply          @default(N)
+  stop_supply_approval  dcm_companies_stop_supply_approval @default(N)
+  dcm_contact_companies dcm_contact_companies[]
+
+  @@index([company_type], map: "dcm_companies_FI_1")
+  @@index([dcm_company_groups_id], map: "dcm_companies_FI_2")
+  @@index([dcm_organization_id], map: "dcm_organization_id")
+}
+
+model dcm_contact_companies {
+  id               Int           @id @default(autoincrement())
+  dcm_contacts_id  Int
+  dcm_companies_id Int
+  designation      String        @db.VarChar(64)
+  is_default       Int           @default(1)
+  is_admin         Boolean       @default(false)
+  is_verified      String        @default("0") @db.Char(1)
+  verified_at      DateTime      @default(dbgenerated("'0000-00-00 00:00:00'")) @db.DateTime(0)
+  verified_by      Int           @default(0)
+  created_by       Int?
+  created_at       DateTime?     @db.DateTime(0)
+  dcm_contacts     dcm_contacts  @relation(fields: [dcm_contacts_id], references: [id], onDelete: Cascade, map: "dcm_contact_companies_ibfk_1")
+  dcm_companies    dcm_companies @relation(fields: [dcm_companies_id], references: [id], onDelete: Cascade, map: "dcm_contact_companies_ibfk_2")
+
+  @@index([dcm_contacts_id], map: "dcm_contact_companies_FI_1")
+  @@index([dcm_companies_id], map: "dcm_contact_companies_FI_2")
+  @@index([verified_by], map: "dcm_contact_companies_FI_3")
+}
+
+model dcm_contacts {
+  id                    Int                              @id @default(autoincrement())
+  parent_contact_id     Int?
+  title                 String?                          @db.VarChar(255)
+  first_name            String                           @db.VarChar(64)
+  middle_name           String?                          @db.VarChar(64)
+  last_name             String                           @db.VarChar(64)
+  profile_pic           String                           @db.VarChar(255)
+  loyalty_code          String                           @db.VarChar(255)
+  code                  String                           @db.VarChar(255)
+  company               String                           @db.VarChar(255)
+  designation           String?                          @db.VarChar(255)
+  gender                String?                          @db.VarChar(1)
+  date_of_birth         DateTime?                        @db.Date
+  telecall_required     dcm_contacts_telecall_required   @default(N)
+  reference_code        String                           @db.VarChar(25)
+  is_deleted            Int
+  created_by            Int
+  created_at            DateTime?                        @db.DateTime(0)
+  updated_at            DateTime?                        @db.DateTime(0)
+  sf_guard_user_id      Int?                             @unique(map: "dcm_contacts_sf_guard_user_id_unique")
+  dcm_hierarchies_id    Int
+  is_verified           String                           @default("0") @db.Char(1)
+  verified_at           DateTime                         @default(dbgenerated("'0000-00-00 00:00:00'")) @db.DateTime(0)
+  verified_by           Int                              @default(0)
+  dcm_organization_id   Int
+  id_extern01           String?                          @db.VarChar(32)
+  id_extern02           String?                          @db.VarChar(32)
+  enrollment_date       DateTime?                        @db.DateTime(0)
+  parent_contact_id_02  Int?
+  parent_contact_id_03  Int?
+  contact_hash          String?                          @db.VarChar(127)
+  is_approved           dcm_contacts_is_approved         @default(no)
+  residential_status    dcm_contacts_residential_status?
+  nationality           String?                          @db.Text
+  dcm_contact_companies dcm_contact_companies[]
+
+  @@unique([dcm_hierarchies_id, dcm_organization_id, id_extern01], map: "tuple_id")
+  @@index([verified_by], map: "dcm_addresses_FI_4")
+  @@index([dcm_hierarchies_id], map: "dcm_hierarchies_id")
+  @@index([dcm_organization_id], map: "dcm_organization_id")
+  @@index([id_extern01], map: "id_extern01")
+  @@index([loyalty_code], map: "loyalty_code")
+}
+
 enum cog_states_is_active {
-   N @map("0")
-   Y @map("1")
+  N @map("0")
+  Y @map("1")
 }
 
 enum cog_cities_is_active {
-   N @map("0")
-   Y @map("1")
+  N @map("0")
+  Y @map("1")
+}
+
+enum dcm_companies_source {
+  mj
+  client
+}
+
+enum dcm_companies_is_active {
+  N @map("0")
+  Y @map("1")
+}
+
+enum dcm_companies_stop_supply {
+  Y
+  N
+}
+
+enum dcm_contacts_telecall_required {
+  N @map("0")
+  Y @map("1")
+  P @map("2")
+}
+
+enum dcm_companies_stop_supply_approval {
+  Y
+  N
+}
+
+enum dcm_contacts_is_approved {
+  no       @map("0")
+  yes      @map("1")
+  rejected @map("2")
+  approved @map("3")
+}
+
+enum dcm_contacts_residential_status {
+  resident
+  non_resident_indian @map("non resident indian")
+  foreign_national    @map("foreign national")
+  pio
 }
